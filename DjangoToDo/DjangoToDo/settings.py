@@ -181,7 +181,7 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 FRONTEND_URL = 'http://localhost:5173'
-
+BACKEND_URL = 'http://localhost:8000'
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'blog_user.views.custom_exception_handler',
 
@@ -193,3 +193,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',
     )
 }
+
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_COOKIE_NAME = 'sessionid'
+SESSION_COOKIE_DOMAIN = None

@@ -1,3 +1,4 @@
+import uuid
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -12,9 +13,8 @@ from django.conf import settings
 from django.utils.http import urlsafe_base64_decode
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
-
-
-from django.db import IntegrityError
+from django.urls import reverse
+from django.core.mail import send_mail
 
 from todo_user.serializers import (
     RegistrationSerializer,
@@ -72,6 +72,24 @@ class Register_User(generics.CreateAPIView):
 
         serializer = self.get_serializer(data=request.data)
 
+        if serializer.is_valid():
+
+            token = uuid.uuid4().hex
+            user_data = serializer.validated_data
+            
+            request.session['user_data'] = user_data
+            request.session['verification_token'] = token
+            
+            verification_url = f"{settings.FRONTEND_URL}/verify-email/{token}/"
+            send_mail(
+                subject="Підтвердження Email",
+                message=f"Привіт, {user_data['username']}! Для підтвердження вашої електронної пошти перейдіть за посиланням: {verification_url}",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user_data['email']],
+                ) 
+            print('request.session.values():',request.session.values())
+
+
         if not serializer.is_valid():
             errors = serializer.errors
             print(errors)
@@ -102,9 +120,9 @@ class Register_User(generics.CreateAPIView):
 
             return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)
 
-        self.perform_create(serializer)
+        # self.perform_create(serializer)
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response({"message": "Registration successful.Будь ласка перевірте вашу пошту на лист за підтвердженням."}, status=status.HTTP_200_OK)
 
 
 class Login_User(generics.GenericAPIView):
@@ -174,29 +192,7 @@ class Reset_confirm_password(generics.GenericAPIView):
 
     """Endpoint for confirming password"""
 
-    def get(self, request, *args, **kwargs):
-
-        uidb64 = kwargs.get('uidb64')
-        token = kwargs.get('token')
-
-        reset_url_failed = '/password-reset-failed/'
-        full_url_failed = f'{settings.FRONTEND_URL}{reset_url_failed}'
-
-        try:
-
-            uid = urlsafe_base64_decode(uidb64).decode('utf-8')
-            user = get_user_model().objects.get(pk=uid)
-        except (TypeError, ValueError, get_user_model().DoesNotExist):
-            return Response({"detail": "Неправильний користувач."}, status=status.HTTP_400_BAD_REQUEST)
-
-        if not default_token_generator.check_token(user, token):
-
-            return redirect(full_url_failed)
-
-        return Response(
-            {"message": "Токен валідний, введіть новый пароль."},
-            status=status.HTTP_200_OK
-        )
+    serializer_class = ResetPasswordConfirmSerializer
 
     def post(self, request, *args, **kwargs):
 
@@ -207,5 +203,40 @@ class Reset_confirm_password(generics.GenericAPIView):
             serializer.save()
 
             return Response({"message": "Пароль був змінений успішно"}, status=status.HTTP_205_RESET_CONTENT)
+        
+        else:
+            if serializer.errors.get('server')[0] == 'Неправильний чи прострочений токен.':
+                print(serializer.errors.get('server')[0])
+                return Response({"errors": {"new_password": 'Неправильний чи прострочений токен.'}},status=status.HTTP_400_BAD_REQUEST)
+            print(serializer.errors.get('server')[0])
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class Activate_email(generics.GenericAPIView):
+
+    def post(self, request, token, *args, **kwargs):
+
+        print('token:',token)
+        session_token = request.session.get('verification_token')
+        print('session_token:',session_token)
+        if session_token == token:
+            user_data = request.session.get('user_data')
+
+            if user_data:
+
+                user = ToDoUser.objects.create_user(
+                    username=user_data['username'],
+                    email=user_data['email'],
+                    password=user_data['password']
+                )
+
+                request.session.flush()
+
+                return Response({"message": "Email successfully verified and user registered!"}, status=status.HTTP_201_CREATED)
+
+            else:
+
+                return Response({"error": "No user data in session"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response({"error": "Invalid token or expired link"}, status=status.HTTP_400_BAD_REQUEST)
