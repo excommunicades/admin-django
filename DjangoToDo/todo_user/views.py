@@ -7,12 +7,20 @@ from rest_framework.authentication import SessionAuthentication, BasicAuthentica
 from rest_framework.views import exception_handler
 from rest_framework.exceptions import ValidationError
 
+from django.shortcuts import redirect
+from django.conf import settings
+from django.utils.http import urlsafe_base64_decode
+from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
+
 
 from django.db import IntegrityError
 
 from todo_user.serializers import (
     RegistrationSerializer,
     AuthorizationSerializer,
+    ResetPasswordSerializer,
+    ResetPasswordConfirmSerializer,
     )
 
 from todo_user.models import ToDoUser
@@ -143,3 +151,57 @@ class Login_User(generics.GenericAPIView):
                 "email": user_data.email
             }
         })
+
+
+class Reset_password(generics.GenericAPIView):
+
+    """Endpoint for letter submitting"""
+
+    def post(self, request, *args, **kwargs):
+
+        serializer = ResetPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message': 'Password reset link has been sent to your email.'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class Reset_confirm_password(generics.GenericAPIView):
+
+    """Endpoint for confirming password"""
+
+    def get(self, request, *args, **kwargs):
+
+        uidb64 = kwargs.get('uidb64')
+        token = kwargs.get('token')
+
+        reset_url_failed = '/password-reset-failed/'
+        full_url_failed = f'{settings.FRONTEND_URL}{reset_url_failed}'
+
+        try:
+
+            uid = urlsafe_base64_decode(uidb64).decode('utf-8')
+            user = get_user_model().objects.get(pk=uid)
+        except (TypeError, ValueError, get_user_model().DoesNotExist):
+            return Response({"detail": "Неправильний користувач."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not default_token_generator.check_token(user, token):
+
+            return redirect(full_url_failed)
+
+        return Response(
+            {"message": "Токен валідний, введіть новый пароль."},
+            status=status.HTTP_200_OK
+        )
+
+    def post(self, request, *args, **kwargs):
+
+        serializer = ResetPasswordConfirmSerializer(data=request.data, context={'request': request})
+
+        if serializer.is_valid():
+
+            serializer.save()
+
+            return Response({"message": "Пароль був змінений успішно"}, status=status.HTTP_205_RESET_CONTENT)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

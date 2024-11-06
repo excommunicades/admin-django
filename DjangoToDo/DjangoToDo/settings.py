@@ -132,6 +132,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'todo_user.ToDoUser'
 
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
@@ -177,6 +179,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
 ]
+FRONTEND_URL = 'http://localhost:5173'
 
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'blog_user.views.custom_exception_handler',

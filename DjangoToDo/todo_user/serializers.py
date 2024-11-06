@@ -1,8 +1,18 @@
 from rest_framework import serializers, status
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from django.http import JsonResponse
+import base64
 
-from django.contrib.auth import authenticate
+from django.contrib.auth.forms import PasswordResetForm
+from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_decode
+
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+
+from django.urls import reverse
+from django.conf import settings
+from django.core.mail import send_mail
 
 from todo_user.models import ToDoUser
 
@@ -127,3 +137,79 @@ class AuthorizationSerializer(serializers.Serializer):
         attrs['user'] = user
 
         return attrs
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+
+        try:
+
+            user = ToDoUser.objects.filter(email=value)
+
+        except ToDoUser.DoesNotExist:
+
+            raise serializers.ValidationError("Користувач не існує.")
+
+        else:
+
+            return value
+
+
+    def save(self):
+
+        email = self.validated_data['email']
+
+        user = get_user_model().objects.get(email=email)
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        reset_url = reverse('password_reset_confirm', kwargs={'uidb64': uid, 'token': token})
+        full_url = f'{settings.FRONTEND_URL}{reset_url}'
+
+
+        send_mail(
+
+            'Password Reset Request',
+            f'Click the link to reset your password: {full_url}',
+            'todo@gmail.com',
+            [user.email]
+        )
+
+
+class ResetPasswordConfirmSerializer(serializers.Serializer):
+
+    uibd64 = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField()
+
+    def validate(self, data):
+        print(data)
+        try:
+
+            uid = urlsafe_base64_decode(data['uibd64']).decode('utf-8')
+
+            user = get_user_model().objects.get(pk=uid)
+
+        except (TypeError, ValueError, get_user_model().DoesNotExist):
+
+            raise serializers.ValidationError('Неправильний користувач.')
+
+        token = data['token']
+
+        if not default_token_generator.check_token(user, token):
+
+            raise serializers.ValidationError({'server': 'Неправильний чи прострочений токен.'})
+
+        return data
+
+    def save(self):
+
+        uid = urlsafe_base64_decode(self.validated_data['uibd64']).decode('utf-8')
+
+        user = get_user_model().objects.get(pk=uid)
+
+        user.set_password(self.validated_data['new_password'])
+
+        user.save()
