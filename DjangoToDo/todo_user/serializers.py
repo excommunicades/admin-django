@@ -147,7 +147,7 @@ class ResetPasswordSerializer(serializers.Serializer):
 
         try:
 
-            user = ToDoUser.objects.filter(email=value)
+            user = ToDoUser.objects.get(email=value)
 
         except ToDoUser.DoesNotExist:
 

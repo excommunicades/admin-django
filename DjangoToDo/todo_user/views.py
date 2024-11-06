@@ -160,6 +160,10 @@ class Reset_password(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
 
         serializer = ResetPasswordSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            if serializer.errors.get('email')[0] == 'Користувач не існує.':
+                return Response({'errors': {"email": "Користувач не існує."}}, status.HTTP_404_NOT_FOUND)
         if serializer.is_valid():
             serializer.save()
             return Response({'message': 'Password reset link has been sent to your email.'}, status=status.HTTP_200_OK)
