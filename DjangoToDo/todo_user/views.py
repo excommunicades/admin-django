@@ -79,7 +79,8 @@ class Register_User(generics.CreateAPIView):
             
             request.session['user_data'] = user_data
             request.session['verification_token'] = token
-            
+            request.session.modified = True
+
             verification_url = f"{settings.FRONTEND_URL}/verify-email/{token}/"
             send_mail(
                 subject="Підтвердження Email",
