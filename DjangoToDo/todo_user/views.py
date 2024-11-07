@@ -220,6 +220,7 @@ class Activate_email(generics.GenericAPIView):
         print('token:',token)
         session_token = request.session.get('verification_token')
         print('session_token:',session_token)
+        print("sessiond_data:", request.session.values())
         if session_token == token:
             user_data = request.session.get('user_data')
 
