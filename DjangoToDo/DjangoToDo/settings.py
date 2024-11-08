@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_redis',
     
-    'todo_user'
+    'users',
 ]
 
 MIDDLEWARE = [
@@ -114,7 +114,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en-us' # uk-UK
 
 TIME_ZONE = 'UTC'
 
@@ -133,7 +133,7 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-AUTH_USER_MODEL = 'todo_user.ToDoUser'
+AUTH_USER_MODEL = 'users.ToDoUser'
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
@@ -149,10 +149,10 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
 ]
 
-REST_FRAMEWORK = {
-    'EXCEPTION_HANDLER': 'blog_user.views.custom_exception_handler',
+# REST_FRAMEWORK = {
+#     'EXCEPTION_HANDLER': 'blog_user.views.custom_exception_handler',
 
-}
+# }
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

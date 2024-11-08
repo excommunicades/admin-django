@@ -5,7 +5,7 @@ from rest_framework_simplejwt.views import (
 
 from django.urls import path
 
-from todo_user.views import (
+from users.views import (
     Register_User,
     Login_User,
     Reset_password,

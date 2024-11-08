@@ -14,8 +14,19 @@ from django.urls import reverse
 from django.conf import settings
 from django.core.mail import send_mail
 
-from todo_user.models import ToDoUser
-
+from users.models import ToDoUser
+from users.services.services_serializers import(
+    send_password_reset_email,
+    validate_reset_password_token,
+    reset_user_password,
+    authenticate_user,
+    create_user,
+    validate_passwords_match,
+    validate_password_strength,
+    validate_email_unique,
+    validate_username_unique
+    
+)
 
 class RegistrationSerializer(serializers.ModelSerializer):
 
@@ -41,50 +52,23 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
         """chekcs username on unique in db"""
 
-        if ToDoUser.objects.filter(username=value).exists():
-
-            raise serializers.ValidationError({"username": "Користувач із таким іменем вже існує."})
-
-        return value
+        return validate_username_unique(value)
 
     def validate_email(self, value):
 
         """checks email on unique in db"""
 
-        if ToDoUser.objects.filter(email=value).exists():
-
-            raise serializers.ValidationError("Користувач із цією електронною адресою вже існує.")
-
-        return value
+        return validate_email_unique(value)
 
     def validate_password(self, value):
 
         """Validates the password strength"""
 
-        if len(value) < 8:
-
-            raise serializers.ValidationError("Пароль має бути не менше 8 символів.")
-
-        has_digit = any(char.isdigit() for char in value)
-
-        if not has_digit:
-
-            raise serializers.ValidationError("Пароль має містити хоча б одну цифру.")
-
-        has_special_char = any(not char.isalnum() for char in value)
-
-        if not has_special_char:
-
-            raise serializers.ValidationError("Пароль повинен містити хоча б один спеціальний символ.")
-
-        return value
+        return validate_password_strength(value)
 
     def validate(self, attrs):
 
-        if attrs['password'] != attrs['confirm_password']:
-
-            raise serializers.ValidationError({"confirm_password": "Паролі мають збігатися."})
-
+        validate_passwords_match(attrs['password'], attrs['confirm_password'])
 
         return attrs
 
@@ -92,13 +76,8 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
         validated_data.pop('confirm_password')
 
-        user = ToDoUser(**validated_data)
+        return create_user(validated_data['username'], validated_data['email'], validated_data['password'])
 
-        user.set_password(validated_data['password'])
-
-        user.save()
-
-        return user
 
 
 class AuthorizationSerializer(serializers.Serializer):
@@ -121,18 +100,7 @@ class AuthorizationSerializer(serializers.Serializer):
                                             }
                                         })
 
-        user = authenticate(username=username, password=password)
-
-        if user is None:
-
-            try:
-                user = ToDoUser.objects.get(username=username)
-
-            except ToDoUser.DoesNotExist:
-
-                raise serializers.ValidationError({"username": "Користувач не існує."})
-
-            raise serializers.ValidationError({"password": "Неправильний пароль."})
+        user = authenticate_user(username, password)
 
         attrs['user'] = user
 
@@ -163,19 +131,8 @@ class ResetPasswordSerializer(serializers.Serializer):
         email = self.validated_data['email']
 
         user = get_user_model().objects.get(email=email)
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        token = default_token_generator.make_token(user)
-        reset_url = reverse('password_reset_confirm', kwargs={'uidb64': uid, 'token': token})
-        full_url = f'{settings.FRONTEND_URL}{reset_url}'
 
-
-        send_mail(
-
-            'Password Reset Request',
-            f'Click the link to reset your password: {full_url}',
-            'todo@gmail.com',
-            [user.email]
-        )
+        send_password_reset_email(user)
 
 
 class ResetPasswordConfirmSerializer(serializers.Serializer):
@@ -184,23 +141,13 @@ class ResetPasswordConfirmSerializer(serializers.Serializer):
     token = serializers.CharField()
     new_password = serializers.CharField()
 
+    def validate_new_password(self, value):
+
+        return validate_password_strength(value)
+
     def validate(self, data):
-        print(data)
-        try:
 
-            uid = urlsafe_base64_decode(data['uibd64']).decode('utf-8')
-
-            user = get_user_model().objects.get(pk=uid)
-
-        except (TypeError, ValueError, get_user_model().DoesNotExist):
-
-            raise serializers.ValidationError('Неправильний користувач.')
-
-        token = data['token']
-
-        if not default_token_generator.check_token(user, token):
-
-            raise serializers.ValidationError({'server': 'Неправильний чи прострочений токен.'})
+        validate_reset_password_token(data['uibd64'], data['token'])
 
         return data
 
@@ -210,6 +157,4 @@ class ResetPasswordConfirmSerializer(serializers.Serializer):
 
         user = get_user_model().objects.get(pk=uid)
 
-        user.set_password(self.validated_data['new_password'])
-
-        user.save()
+        reset_user_password(user, self.validated_data['new_password'])
