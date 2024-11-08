@@ -15,6 +15,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.urls import reverse
 from django.core.mail import send_mail
+from django.core.cache import cache
 
 from todo_user.serializers import (
     RegistrationSerializer,
@@ -60,6 +61,7 @@ def custom_exception_handler(exc, context):
 
         return response
 
+
 class Register_User(generics.CreateAPIView):
 
     """Endpoint for user registration"""
@@ -76,19 +78,19 @@ class Register_User(generics.CreateAPIView):
 
             token = uuid.uuid4().hex
             user_data = serializer.validated_data
+
+            cache.set(token, user_data, timeout=180)
             
             request.session['user_data'] = user_data
             request.session['verification_token'] = token
-            request.session.modified = True
-
+            
             verification_url = f"{settings.FRONTEND_URL}/verify-email/{token}/"
             send_mail(
                 subject="Підтвердження Email",
                 message=f"Привіт, {user_data['username']}! Для підтвердження вашої електронної пошти перейдіть за посиланням: {verification_url}",
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user_data['email']],
-                ) 
-            print('request.session.values():',request.session.values())
+                )
 
 
         if not serializer.is_valid():
@@ -123,7 +125,7 @@ class Register_User(generics.CreateAPIView):
 
         # self.perform_create(serializer)
 
-        return Response({"message": "Registration successful.Будь ласка перевірте вашу пошту на лист за підтвердженням."}, status=status.HTTP_200_OK)
+        return Response({"message": "Реєстрація успішна. Будь ласка, перевірте вашу пошту на лист для підтвердження."}, status=status.HTTP_200_OK)
 
 
 class Login_User(generics.GenericAPIView):
@@ -134,6 +136,7 @@ class Login_User(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
+
         serializer = self.get_serializer(data=request.data)
 
         if not serializer.is_valid():
@@ -185,7 +188,7 @@ class Reset_password(generics.GenericAPIView):
                 return Response({'errors': {"email": "Користувач не існує."}}, status.HTTP_404_NOT_FOUND)
         if serializer.is_valid():
             serializer.save()
-            return Response({'message': 'Password reset link has been sent to your email.'}, status=status.HTTP_200_OK)
+            return Response({'message': 'Посилання для зміни пароля надіслано на вашу електронну адресу.'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -219,26 +222,21 @@ class Activate_email(generics.GenericAPIView):
     def post(self, request, token, *args, **kwargs):
 
         print('token:',token)
-        session_token = request.session.get('verification_token')
-        print('session_token:',session_token)
-        print("sessiond_data:", request.session.values())
-        if session_token == token:
-            user_data = request.session.get('user_data')
+        user_data = cache.get(token)
 
-            if user_data:
 
-                user = ToDoUser.objects.create_user(
-                    username=user_data['username'],
-                    email=user_data['email'],
-                    password=user_data['password']
-                )
+        if user_data:
 
-                request.session.flush()
+            user = ToDoUser.objects.create_user(
+                username=user_data['username'],
+                email=user_data['email'],
+                password=user_data['password']
+            )
 
-                return Response({"message": "Email successfully verified and user registered!"}, status=status.HTTP_201_CREATED)
+            cache.delete(token)
 
-            else:
+            return Response({"message": "Електронну пошту успішно перевірено та користувача зареєстровано!"}, status=status.HTTP_201_CREATED)
 
-                return Response({"error": "No user data in session"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        return Response({"error": "Invalid token or expired link"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+
+            return Response({"error": "У сеансі відсутні дані користувача"}, status=status.HTTP_400_BAD_REQUEST)

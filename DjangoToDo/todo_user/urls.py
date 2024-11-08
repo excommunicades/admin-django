@@ -10,7 +10,7 @@ from todo_user.views import (
     Login_User,
     Reset_password,
     Reset_confirm_password,
-    Activate_email
+    Activate_email,
 )
 
 urlpatterns = [
@@ -21,4 +21,5 @@ urlpatterns = [
     path('verify-email/<str:token>/', Activate_email.as_view(), name='verify-email'),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
 ]

@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from datetime import timedelta
 from pathlib import Path
+import logging
+MIDDLEWARE_LOGGER = logging.getLogger("django.middleware")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-%wv*(@0*q07dd(7lk68l!s!+(im+fzn4v3!qo08sk2y@=u#y_c'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
@@ -41,6 +43,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'corsheaders',
+    'django_redis',
     
     'todo_user'
 ]
@@ -54,7 +57,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-
+    # 'DjangoToDo.middleware.SessionLoggingMiddleware',
 ]
 
 ROOT_URLCONF = 'DjangoToDo.urls'
@@ -134,6 +137,81 @@ AUTH_USER_MODEL = 'todo_user.ToDoUser'
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
+FRONTEND_URL = 'http://localhost:5173'
+
+BACKEND_URL = 'http://localhost:8000'
+
+# CORS SETTINGS
+
+CORS_ALLOW_ALL_ORIGINS = True
+
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+]
+
+REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'blog_user.views.custom_exception_handler',
+
+}
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    )
+}
+
+SESSION_ENGINE = 'django.contrib.sessions.backends.file'
+
+# SESSION COOKIE SETTINGS
+
+SESSION_CACHE_ALIAS = 'default'
+
+SESSION_COOKIE_NAME = 'sessionid'
+
+SESSION_COOKIE_DOMAIN = 'localhost'
+
+SESSION_COOKIE_SAMESITE = 'None'
+
+SESSION_COOKIE_SECURE = False
+
+
+SESSION_SAVE_EVERY_REQUEST = True
+
+# CRSF COOKIE SETTINGS
+
+CSRF_COOKIE_SAMESITE = 'None'
+
+CSRF_COOKIE_SECURE = True
+
+CSRF_COOKIE_HTTPONLY = False
+
+CSRF_TRUSTED_ORIGINS = ['http://localhost:5173']
+
+CSRF_COOKIE_DOMAIN = ".localhost"
+
+SESSION_COOKIE_AGE = 3600
+
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/0',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
+}
+
+SESSION_REDIS = {
+    'HOST': '127.0.0.1',
+    'PORT': 6379,
+    'DB': 1,
+    'PASSWORD': None,
+    'PREFIX': 'session',
+    'SOCKET_TIMEOUT': 1
+}
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
@@ -174,31 +252,25 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }
 
-CORS_ALLOW_ALL_ORIGINS = True
-
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-]
-
-FRONTEND_URL = 'http://localhost:5173'
-BACKEND_URL = 'http://localhost:8000'
-REST_FRAMEWORK = {
-    'EXCEPTION_HANDLER': 'blog_user.views.custom_exception_handler',
-
-}
-
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
-    )
-}
-
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-SESSION_COOKIE_NAME = 'sessionid'
-SESSION_COOKIE_DOMAIN = None
-SESSION_COOKIE_SAMESITE = 'None'
-SESSION_COOKIE_SECURE = False
-
-CSRF_TRUSTED_ORIGINS = ['http://localhost:5173']
-CORS_ALLOW_CREDENTIALS = True
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
+#     'handlers': {
+#         'console': {
+#             'level': 'DEBUG',
+#             'class': 'logging.StreamHandler',
+#         },
+#     },
+#     'loggers': {
+#         'django': {
+#             'handlers': ['console'],
+#             'level': 'DEBUG',
+#             'propagate': True,
+#         },
+#         'django_redis': {  # Логгирование для django_redis
+#             'handlers': ['console'],
+#             'level': 'DEBUG',
+#             'propagate': True,
+#         },
+#     },
+# }
