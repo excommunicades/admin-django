@@ -7,7 +7,7 @@ This project provides a RESTful API for managing user authentication and registr
 
 This project serves as a guide to building a custom User Authentication API with JWT tokens for secure and scalable applications.
 
-## This project is an example how to create a custom REST API using Django and Django REST Framework. The code serves as a practical guide to the following concepts:
+## This project is an example how to create a custom django admin using  Django REST Framework and drf-simple-jwt. The code serves as a practical guide to the following concepts:
 
 * **User Registration and Authentication: Secure JWT authentication for users, allowing them to register, log in, and interact with protected endpoints.**
 * **Custom User Model: Extends Django’s built-in user model to add additional fields and customize user behavior.**
