@@ -27,8 +27,9 @@ This project serves as a guide to building a custom User Authentication API with
 
 1. **Clone the repository:** ```git clone https://github.com/excommunicades/admin-django.git``` -> ```cd django-admin```
 2. **Install dependencies:** ```pip install -r requirements.txt```
-3. **Apply database migrations:** ```git clone https://github.com/excommunicades/admin-django.git``` -> ```python manage.py migrate```
-3. **Run the development server:** ```git clone https://github.com/excommunicades/admin-django.git``` -> ```python manage.py runserver```
+3. **Create database migrations:** ```python3 manage.py makemigrations```
+4. **Apply database migrations:** ```python3 manage.py migrate```
+5. **Run the development server:** ```python3 manage.py runserver```
 
 ### API Endpoints
 
