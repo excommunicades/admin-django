@@ -1,5 +1,5 @@
 # django-admin  ✅
-![Blog Image](https://raw.githubusercontent.com/excommunicades/admin-django/main/django-admin.jpg)
+![admin-django image](https://raw.githubusercontent.com/excommunicades/admin-django/main/django-admin.png)
 
 ## DESCRIPTION: 
 
